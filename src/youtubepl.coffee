@@ -146,7 +146,7 @@ module.exports = (robot) ->
   robot.hear /https?:\/\/(?:www\.)?youtu\.be\/([^?]+)/i, (res) ->
     update_playlist(res.match[1], res)
 
-  robot.respond /youtubepl prune ([0-9]+)?/i, (res) ->
+  robot.respond /youtubepl prune ([0-9]+)/i, (res) ->
     get_room_playlist res.message.room, (err, playlist) ->
       prune_from_playlist playlist, res.match[1], res, () ->
         res.send "Successfully deleted #{res.match[1]} items from the playlist"
