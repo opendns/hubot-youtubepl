@@ -6,7 +6,8 @@
 #   GOOGLE_OAUTH2_API_SECRET
 #
 # Commands:
-#   hubot youtube playlist - Gives you the URL for this room's playlist
+#   hubot youtubepl - Gives you the URL for this room's playlist
+#   hubot youtubepl prune # - Removes # of entries from the playlist
 #   https://www.youtube.com/watch?v=ID - Add the video to the room's playlist
 #   https://youtu.be/ID - Adds the video to the room's playlist
 #
@@ -15,7 +16,7 @@
 # Author:
 #   Brian Hartvigsen <bhartvigsen@opendns.com>
 
-
+async = require 'async'
 google = require 'googleapis'
 youtube = google.youtube 'v3'
 oauth2 = google.auth.OAuth2
@@ -31,7 +32,13 @@ module.exports = (robot) ->
     return
 
   if robot.brain.get 'youtubepl.token'
+    robot.logger.info "Loading youtubepl.token from brain"
     client.setCredentials robot.brain.get('youtubepl.token')
+
+  setInterval () ->
+    if client.credentials?
+      robot.brain.set 'youtubepl.token', client.credentials
+  , 60 * 1000
 
   # Need to store the token stuff... But where
 
@@ -58,44 +65,77 @@ module.exports = (robot) ->
           cb(null, response.id)
       )
 
+  prune_from_playlist = (playlist, num, res, cb) ->
+    if num > 50 or num <= 0
+      res.send "You can't delete #{num} entires, must be between 1 and 50"
+      return
+
+    youtube.playlistItems.list {
+      auth: client,
+      part: 'id',
+      maxResults: num,
+      playlistId: playlist
+    }, (err, videos) ->
+      if err?
+        res.send "Unable to get playlist items: #{err}"
+      else
+        async.eachSeries videos.items, (item, callback) ->
+          youtube.playlistItems.delete {
+            auth: client,
+            id: item.id
+          }, (err, response) ->
+            if err? then callback(err) else callback()
+        , (err) ->
+          if err?
+            res.send "Unable to delete from playlist: #{err}"
+          else
+            cb()
+  prune_playlist = (playlist, res, cb) ->
+    prune_from_playlist playlist, 5, res, cb
+
+  insert_video_to_playlist = (video, playlist, res) ->
+    youtube.playlistItems.insert({
+      auth: client,
+      part: 'snippet',
+      resource: {
+        snippet: {
+          playlistId: playlist,
+          resourceId: {
+            videoId: video,
+            kind: 'youtube#video'
+          }
+        }
+      }
+    }, (err, response) ->
+      if err?
+        switch err.code
+          when 403
+            prune_playlist playlist, res, () ->
+              # Try again!
+              insert_video_to_playlist(video, playlist, res)
+          else res.send "Unable to add that to the playlist :( (#{err})"
+      else
+        res.send "Added that to the playlist!"
+    )
 
   update_playlist = (code, res) ->
     get_room_playlist(res.message.room, (err, playlist) ->
       if err?
         res.send "Error updating playlist: #{err}"
-        return
-
-      youtube.playlistItems.insert({
-        auth: client,
-        part: 'snippet',
-        resource: {
-          snippet: {
-            playlistId: playlist,
-            resourceId: {
-              videoId: code,
-              kind: 'youtube#video'
-            }
-          }
-        }
-      }, (err, response) ->
-        if err?
-          res.send JSON.stringify(err)
-          res.send "Unable to add that to the playlist :( (#{err})"
-        else
-          res.send "Added that to the playlist!"
-      )
+      else
+        insert_video_to_playlist code, playlist, res
     )
 
-  robot.respond /youtube playlist authorize/i, (res) ->
+  robot.respond /youtubepl authorize/i, (res) ->
     res.send client.generateAuthUrl({
       access_type: 'offline',
       scope: 'https://www.googleapis.com/auth/youtube.force-ssl'
     })
 
-  robot.respond /youtube playlist verify (.*)/i, (res) ->
+  robot.respond /youtubepl verify (.*)/i, (res) ->
     client.getToken(res.match[1], (err, tokens) ->
-      client.setCredentials tokens
       robot.brain.set 'youtubepl.token',  tokens
+      client.setCredentials tokens
       res.send if err? then err else "All good here"
     )
 
@@ -105,7 +145,12 @@ module.exports = (robot) ->
   robot.hear /https?:\/\/(?:www\.)?youtu\.be\/([^?]+)/i, (res) ->
     update_playlist(res.match[1], res)
 
-  robot.respond /youtube playlist$/i, (res) ->
+  robot.respond /youtubepl prune ([0-9]+)?/i, (res) ->
+    get_room_playlist res.message.room, (err, playlist) ->
+      prune_from_playlist playlist, res.match[1], res, () ->
+        res.send "Successfully deleted #{res.match[1]} items from the playlist"
+
+  robot.respond /youtubepl$/i, (res) ->
     get_room_playlist(res.message.room, (err, response) ->
       if err?
         res.send "Unable to get/create playlist for #{res.message.room}: #{err}"

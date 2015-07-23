@@ -13,6 +13,7 @@
     "url": "git://github.office.opendns.com/bhartvigsen/hubot-youtubepl/issues"
   },
   "dependencies": {
+    "async": "^1.4.0",
     "googleapis": "^2.1.1"
   },
   "peerDependencies": {
