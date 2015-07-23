@@ -35,10 +35,13 @@ module.exports = (robot) ->
     robot.logger.warning "Need GOOGLE_OAUTH2_API_SECRET"
     return
 
+  if robot.brain.get 'youtubepl.token'
+    client.setCredentials robot.brain.get('youtubepl.token')
+
   # Need to store the token stuff... But where
 
   update_playlist = (code, res) ->
-    youtube.playlistitems.insert {, auth: client}, (err, response) ->
+    youtube.playlistItems.insert {, auth: client}, (err, response) ->
       # Do stuff here
 
   robot.respond /brain/i, (res) ->
@@ -60,6 +63,7 @@ module.exports = (robot) ->
   robot.respond /ytverify (.*)/i, (res) ->
     client.getToken(res.match[1], (err, tokens) ->
       client.setCredentials tokens
+      robot.brain.set 'youtubepl.token',  tokens
       res.send if err? then err else "All good here"
     )
 
@@ -70,4 +74,24 @@ module.exports = (robot) ->
     update_playlist(res.match[1])
 
   robot.respond /playlist/i, (res) ->
-    res.send "I should give you the playlist url here"
+    if robot.brain.get('youtubepl.playlist.' + res.message.room)?
+      res.send "https://www.youtube.com/playlist?list=" + robot.brain.get('youtubepl.playlist.' + res.message.room)
+    else
+      youtube.playlists.insert({
+        auth: client,
+        part: 'snippet,status',
+        resource: {
+          snippet: {
+            title: 'Playlist for ' + res.message.room,
+          },
+          status: {
+            privacyStatus: 'unlisted'
+          }
+        }
+      }, (err, response) ->
+        if err?
+          res.send "Unable to create a playlist for #{res.message.room}: #{err}"
+        else
+          robot.brain.set 'youtubepl.playlist.' + res.message.room, response.id
+          res.send "https://www.youtube.com/playlist?list=" + robot.brain.get('youtubepl.playlist.' + res.message.room)
+      )
