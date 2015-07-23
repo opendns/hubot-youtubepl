@@ -6,9 +6,9 @@
 #   HUBOT_YOUTUBE_CLIENTSECRET
 #
 # Commands:
-#   hubot playlist - Gives you the URL for this room's playlist
-#   https?://(www.)?youtube.com/watch?v=ID - Adds to playlist
-#   https?://(www.)?youtu.be/ID - Adds to playlist
+#   hubot youtube playlist - Gives you the URL for this room's playlist
+#   https://www.youtube.com/watch?v=ID - Add the video to the room's playlist
+#   https://youtu.be/ID - Adds the video to the room's playlist
 #
 # Notes:
 #   <optional notes required for the script>
@@ -86,13 +86,13 @@ module.exports = (robot) ->
       )
     )
 
-  robot.respond /youtubepl authorize/i, (res) ->
+  robot.respond /youtube playlist authorize/i, (res) ->
     res.send client.generateAuthUrl({
       access_type: 'offline',
       scope: 'https://www.googleapis.com/auth/youtube.force-ssl'
     })
 
-  robot.respond /youtubepl verify (.*)/i, (res) ->
+  robot.respond /youtube playlist verify (.*)/i, (res) ->
     client.getToken(res.match[1], (err, tokens) ->
       client.setCredentials tokens
       robot.brain.set 'youtubepl.token',  tokens
@@ -105,7 +105,7 @@ module.exports = (robot) ->
   robot.hear /https?:\/\/(?:www\.)?youtu\.be\/([^?]+)/i, (res) ->
     update_playlist(res.match[1], res)
 
-  robot.respond /playlist/i, (res) ->
+  robot.respond /youtube playlist$/i, (res) ->
     get_room_playlist(res.message.room, (err, response) ->
       if err?
         res.send "Unable to get/create playlist for #{res.message.room}: #{err}"
