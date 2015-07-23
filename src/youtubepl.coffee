@@ -90,6 +90,7 @@ module.exports = (robot) ->
             res.send "Unable to delete from playlist: #{err}"
           else
             cb()
+
   prune_playlist = (playlist, res, cb) ->
     prune_from_playlist playlist, 5, res, cb
 
