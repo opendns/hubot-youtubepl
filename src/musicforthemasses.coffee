@@ -16,7 +16,7 @@
 # Author:
 #   Brian Hartvigsen <brian.andrew@brianandjenny.com>
 
-modules.exports = (robot) ->
+module.exports = (robot) ->
 
   # OAUTH...
   unless process.env.HUBOT_YOUTUBE_CLIENTID?
