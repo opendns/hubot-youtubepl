@@ -16,17 +16,17 @@
 # Author:
 #   Brian Hartvigsen <brian.andrew@brianandjenny.com>
 
-scribe = require('scribe-node').load(['OAuth'])
-services =
-  'youtube':
-    'provider': scribe.GoogleApi2
-    'key': process.env.GOOGLE_OAUTH2_API_KEY
-    'secret': process.env.GOOGLE_OAUTH2_API_SECRET
-    'scope': 'https://www.googleapis.com/auth/youtube.force-ssl'
-    'callback': 'urn:ietf:wg:oauth:2.0:oob'
+google = require 'googleapis'
+youtube = google.youtube 'v3'
+oauth2 = google.auth.OAuth2
+client = new oauth2 process.env.GOOGLE_OAUTH2_API_KEY, process.env.GOOGLE_OAUTH2_API_SECRET, 'urn:ietf:wg:oauth:2.0:oob'
+
+
+#    'key': process.env.GOOGLE_OAUTH2_API_KEY
+#    'secret': process.env.GOOGLE_OAUTH2_API_SECRET
+
 
 module.exports = (robot) ->
-
   # OAUTH...
   unless process.env.GOOGLE_OAUTH2_API_KEY?
     robot.logger.warning "Need GOOGLE_OAUTH2_API_KEY"
@@ -37,20 +37,31 @@ module.exports = (robot) ->
 
   # Need to store the token stuff... But where
 
-  #update_playlist = (code) ->
-    # Do stuff here
+  update_playlist = (code, res) ->
+    youtube.playlistitems.insert {, auth: client}, (err, response) ->
+      # Do stuff here
+
+  robot.respond /brain/i, (res) ->
+    res.send JSON.stringify robot.brain.data
+
+  robot.respond /yttoken/i, (res) ->
+    res.send "Token is output here"
+
+  robot.respond /ytrefresh/i, (res) ->
+    client.refreshAccessToken (err, tokens) ->
+      res.send if err? then err else "All good here!"
 
   robot.respond /ytauthorize/i, (res) ->
-    res.send 'Getting you the authorization url'
-    callback = (url) ->
-      res.send "Authorization URL " + url
-    new scribe.OAuth(robot.brain.data, 'youtube', services).get_authorization_url(callback)
+    res.send client.generateAuthUrl({
+      access_type: 'offline',
+      scope: 'https://www.googleapis.com/auth/youtube.force-ssl'
+    })
 
   robot.respond /ytverify (.*)/i, (res) ->
-    res.send 'Setting verification token to ' + res.match[1]
-    callback = (response) ->
-      res.send "Verification response " + response
-    new scribe.OAuth(robot.brain.data, 'youtube', services).set_verification_code(res.match[1], callback)
+    client.getToken(res.match[1], (err, tokens) ->
+      client.setCredentials tokens
+      res.send if err? then err else "All good here"
+    )
 
   robot.hear /https?:\/\/(www\.)?youtube\.com\/watch?v=([^&]+)/i, (res) ->
     update_playlist(res.match[1])
