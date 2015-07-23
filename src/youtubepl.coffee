@@ -1,9 +1,9 @@
 # Description
-#   A hubot script that does the things
+#   A hubot script that will add all youtube links to a playlist
 #
 # Configuration:
-#   HUBOT_YOUTUBE_CLIENTID
-#   HUBOT_YOUTUBE_CLIENTSECRET
+#   GOOGLE_OAUTH2_API_KEY
+#   GOOGLE_OAUTH2_API_SECRET
 #
 # Commands:
 #   hubot youtube playlist - Gives you the URL for this room's playlist
@@ -11,10 +11,10 @@
 #   https://youtu.be/ID - Adds the video to the room's playlist
 #
 # Notes:
-#   <optional notes required for the script>
 #
 # Author:
-#   Brian Hartvigsen <brian.andrew@brianandjenny.com>
+#   Brian Hartvigsen <bhartvigsen@opendns.com>
+
 
 google = require 'googleapis'
 youtube = google.youtube 'v3'

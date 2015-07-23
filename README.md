@@ -1,20 +1,20 @@
-# hubot-musicforthemasses
+# hubot-youtubepl
 
-A hubot script that does the things
+A hubot script that will add all youtube links to a playlist
 
-See [`src/musicforthemasses.coffee`](src/musicforthemasses.coffee) for full documentation.
+See [`src/youtubepl.coffee`](src/youtubepl.coffee) for full documentation.
 
 ## Installation
 
 In hubot project repo, run:
 
-`npm install hubot-musicforthemasses --save`
+`npm install hubot-youtubepl --save`
 
-Then add **hubot-musicforthemasses** to your `external-scripts.json`:
+Then add **hubot-youtubepl** to your `external-scripts.json`:
 
 ```json
 [
-  "hubot-musicforthemasses"
+  "hubot-youtubepl"
 ]
 ```
 

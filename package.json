@@ -1,16 +1,16 @@
 {
-  "name": "hubot-musicforthemasses",
-  "description": "A hubot script that does the things",
+  "name": "hubot-youtubepl",
+  "description": "A hubot script that will add all youtube links to a playlist",
   "version": "0.0.0",
-  "author": "Brian Hartvigsen <brian.andrew@brianandjenny.com>",
+  "author": "Brian Hartvigsen <bhartvigsen@opendns.com>",
   "license": "MIT",
   "keywords": "hubot, hubot-scripts",
   "repository": {
     "type": "git",
-    "url": "git://github.com/hubot-scripts/hubot-musicforthemasses.git"
+    "url": "git://github.office.opendns.com/bhartvigsen/hubot-youtubepl.git"
   },
   "bugs": {
-    "url": "https://github.com/hubot-scripts/hubot-musicforthemasses/issues"
+    "url": "git://github.office.opendns.com/bhartvigsen/hubot-youtubepl/issues"
   },
   "dependencies": {
     "googleapis": "^2.1.1"
