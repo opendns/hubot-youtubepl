@@ -1,7 +1,14 @@
 modules.exports = (robot) ->
-  unless process.evn.HUBOT_YOUTUBE_API?
-    robot.logger.warning "Need HUBOT_YOUTUBE_API"
+
+  # OAUTH...
+  unless process.env.HUBOT_YOUTUBE_CLIENTID?
+    robot.logger.warning "Need HUBOT_YOUTUBE_CLIENTID"
     return
+  unless process.env.HUBOT_YOUTUBE_CLIENTSECRET?
+    robot.logger.warning "Need HUBOT_YOUTUBE_CLIENTSECRET"
+    return
+
+  # Need to store the token stuff... But where
 
   update_playlist = (code) ->
     # Do stuff here
