@@ -21,6 +21,12 @@ Then add **hubot-youtubepl** to your `external-scripts.json`:
 ## Sample Interaction
 
 ```
-user1>> hubot hello
-hubot>> hello!
+user1>> hubot youtubepl authorize
+hubot>> http://.....
+user1>> hubot youtubepl verify XYZ
+hubot>> All good!
+user1>> hubot youtubepl
+hubot>> https://www.youtube.com/playlist?list=PLkPBG58N87CgfhdabCoFe0dB3ClZZ6oho
+user1>> http://youtu.be/XYZ
+hubot>> Added that to the playlist!
 ```

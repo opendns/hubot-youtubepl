@@ -20,7 +20,9 @@ async = require 'async'
 google = require 'googleapis'
 youtube = google.youtube 'v3'
 oauth2 = google.auth.OAuth2
-client = new oauth2 process.env.GOOGLE_OAUTH2_API_KEY, process.env.GOOGLE_OAUTH2_API_SECRET, 'urn:ietf:wg:oauth:2.0:oob'
+client = new oauth2 process.env.GOOGLE_OAUTH2_API_KEY,
+  process.env.GOOGLE_OAUTH2_API_SECRET,
+  'urn:ietf:wg:oauth:2.0:oob'
 
 module.exports = (robot) ->
   # OAUTH...
@@ -33,7 +35,7 @@ module.exports = (robot) ->
 
   if robot.brain.get 'youtubepl.token'
     robot.logger.info "Loading youtubepl.token from brain"
-    client.setCredentials robot.brain.get('youtubepl.token')
+    client.setCredentials robot.brain.get 'youtubepl.token'
 
   setInterval () ->
     if client.credentials?
@@ -44,9 +46,9 @@ module.exports = (robot) ->
 
   get_room_playlist = (room, cb) ->
     if robot.brain.get('youtubepl.playlist.' + room)?
-      cb(null, robot.brain.get('youtubepl.playlist.' + room))
+      cb null, robot.brain.get 'youtubepl.playlist.' + room
     else
-      youtube.playlists.insert({
+      youtube.playlists.insert {
         auth: client,
         part: 'snippet,status',
         resource: {
@@ -59,11 +61,10 @@ module.exports = (robot) ->
         }
       }, (err, response) ->
         if err?
-          cb(err, null)
+          cb err, null
         else
           robot.brain.set 'youtubepl.playlist.' + room, response.id
-          cb(null, response.id)
-      )
+          cb null, response.id
 
   prune_from_playlist = (playlist, num, res, cb) ->
     if num > 50 or num <= 0
@@ -84,7 +85,7 @@ module.exports = (robot) ->
             auth: client,
             id: item.id
           }, (err, response) ->
-            if err? then callback(err) else callback()
+            if err? then callback err else callback()
         , (err) ->
           if err?
             res.send "Unable to delete from playlist: #{err}"
@@ -95,7 +96,7 @@ module.exports = (robot) ->
     prune_from_playlist playlist, 5, res, cb
 
   insert_video_to_playlist = (video, playlist, res) ->
-    youtube.playlistItems.insert({
+    youtube.playlistItems.insert {
       auth: client,
       part: 'snippet',
       resource: {
@@ -117,34 +118,31 @@ module.exports = (robot) ->
           else res.send "Unable to add that to the playlist :( (#{err})"
       else
         res.send "Added that to the playlist!"
-    )
 
   update_playlist = (code, res) ->
-    get_room_playlist(res.message.room, (err, playlist) ->
+    get_room_playlist res.message.room, (err, playlist) ->
       if err?
         res.send "Error updating playlist: #{err}"
       else
         insert_video_to_playlist code, playlist, res
-    )
 
   robot.respond /youtubepl authorize/i, (res) ->
-    res.send client.generateAuthUrl({
+    res.send client.generateAuthUrl {
       access_type: 'offline',
       scope: 'https://www.googleapis.com/auth/youtube.force-ssl'
-    })
+    }
 
   robot.respond /youtubepl verify (.*)/i, (res) ->
-    client.getToken(res.match[1], (err, tokens) ->
+    client.getToken res.match[1], (err, tokens) ->
       robot.brain.set 'youtubepl.token',  tokens
       client.setCredentials tokens
       res.send if err? then err else "All good here"
-    )
 
   robot.hear /https?:\/\/(?:www\.)?youtube\.com\/watch\?v=([^&]+)/i, (res) ->
-    update_playlist(res.match[1], res)
+    update_playlist res.match[1], res
 
   robot.hear /https?:\/\/(?:www\.)?youtu\.be\/([^?]+)/i, (res) ->
-    update_playlist(res.match[1], res)
+    update_playlist res.match[1], res
 
   robot.respond /youtubepl prune ([0-9]+)/i, (res) ->
     get_room_playlist res.message.room, (err, playlist) ->
@@ -152,9 +150,8 @@ module.exports = (robot) ->
         res.send "Successfully deleted #{res.match[1]} items from the playlist"
 
   robot.respond /youtubepl$/i, (res) ->
-    get_room_playlist(res.message.room, (err, response) ->
+    get_room_playlist res.message.room, (err, response) ->
       if err?
         res.send "Unable to get/create playlist for #{res.message.room}: #{err}"
       else
         res.send "https://www.youtube.com/playlist?list=#{response}"
-    )
