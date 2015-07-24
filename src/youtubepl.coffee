@@ -23,6 +23,7 @@ oauth2 = google.auth.OAuth2
 client = new oauth2 process.env.GOOGLE_OAUTH2_API_KEY,
   process.env.GOOGLE_OAUTH2_API_SECRET,
   'urn:ietf:wg:oauth:2.0:oob'
+credsSet = false
 
 module.exports = (robot) ->
   # OAUTH...
@@ -33,21 +34,36 @@ module.exports = (robot) ->
     robot.logger.warning "Need GOOGLE_OAUTH2_API_SECRET"
     return
 
-  if robot.brain.get 'youtubepl.token'
-    robot.logger.info "Loading youtubepl.token from brain"
-    client.setCredentials robot.brain.get 'youtubepl.token'
+  # Turns out the brain can get loaded AFTER this script
+  # So let's just call this whenever we might need auth
+  oauth_set_creds = ->
+    if credsSet
+      return
+    else
+      if robot.brain.get 'youtubepl.token'
+        robot.logger.info "Loading youtubepl.token from brain"
+        client.setCredentials robot.brain.get 'youtubepl.token'
+        credsSet = true
+      else
+        robot.logger.info "No youtubepl.token found in brain"
 
-  setInterval () ->
-    if client.credentials?
-      robot.brain.set 'youtubepl.token', client.credentials
-  , 60 * 1000
+  oauth_authorize = (res) ->
+    res.send client.generateAuthUrl {
+      access_type: 'offline',
+      scope: 'https://www.googleapis.com/auth/youtube.force-ssl'
+    }
 
-  # Need to store the token stuff... But where
+  oauth_verify = (res) ->
+    client.getToken res.match[1], (err, tokens) ->
+      robot.brain.set 'youtubepl.token', tokens
+      client.setCredentials tokens
+      res.send if err? then err else "All good here"
 
   get_room_playlist = (room, cb) ->
     if robot.brain.get('youtubepl.playlist.' + room)?
       cb null, robot.brain.get 'youtubepl.playlist.' + room
     else
+      oauth_set_creds()
       youtube.playlists.insert {
         auth: client,
         part: 'snippet,status',
@@ -71,6 +87,7 @@ module.exports = (robot) ->
       res.send "You can't delete #{num} entires, must be between 1 and 50"
       return
 
+    oauth_set_creds()
     youtube.playlistItems.list {
       auth: client,
       part: 'id',
@@ -96,6 +113,7 @@ module.exports = (robot) ->
     prune_from_playlist playlist, 5, res, cb
 
   insert_video_to_playlist = (video, playlist, res) ->
+    oauth_set_creds()
     youtube.playlistItems.insert {
       auth: client,
       part: 'snippet',
@@ -127,16 +145,10 @@ module.exports = (robot) ->
         insert_video_to_playlist code, playlist, res
 
   robot.respond /youtubepl authorize/i, (res) ->
-    res.send client.generateAuthUrl {
-      access_type: 'offline',
-      scope: 'https://www.googleapis.com/auth/youtube.force-ssl'
-    }
+    oauth_authorize res
 
   robot.respond /youtubepl verify (.*)/i, (res) ->
-    client.getToken res.match[1], (err, tokens) ->
-      robot.brain.set 'youtubepl.token',  tokens
-      client.setCredentials tokens
-      res.send if err? then err else "All good here"
+    oauth_verify res
 
   robot.hear /https?:\/\/(?:www\.)?youtube\.com\/watch\?v=([^&]+)/i, (res) ->
     update_playlist res.match[1], res
@@ -148,6 +160,14 @@ module.exports = (robot) ->
     get_room_playlist res.message.room, (err, playlist) ->
       prune_from_playlist playlist, res.match[1], res, () ->
         res.send "Successfully deleted #{res.match[1]} items from the playlist"
+
+  robot.respond /youtubepl delete playlist/i, (res) ->
+    get_room_playlist res.message.room, (err, response) ->
+      if err?
+        res.send "Unable to find playlist to delete for #{res.message.room}: #{err}"
+      else
+        robot.brain.remove 'youtubepl.playlist.' + res.message.room
+        res.send "Deleted playlist for room #{res.message.room}"
 
   robot.respond /youtubepl$/i, (res) ->
     get_room_playlist res.message.room, (err, response) ->
