@@ -133,9 +133,9 @@ module.exports = (robot) ->
             prune_playlist playlist, res, () ->
               # Try again!
               insert_video_to_playlist(video, playlist, res)
-          else res.send "Unable to add that to the playlist :( (#{err})"
+          else robot.logger.error "Unable to add that to the playlist :( (#{err})"
       else
-        res.send "Added that to the playlist!"
+        robot.logger.debug "Added that to the playlist!"
 
   update_playlist = (code, res) ->
     get_room_playlist res.message.room, (err, playlist) ->
@@ -175,3 +175,28 @@ module.exports = (robot) ->
         res.send "Unable to get/create playlist for #{res.message.room}: #{err}"
       else
         res.send "https://www.youtube.com/playlist?list=#{response}"
+
+  robot.respond /(?:youtube|yt)(?: me)? (.*)/i, (msg) ->
+    unless process.env.HUBOT_YOUTUBE_API_KEY
+      return msg.send "You must configure the HUBOT_YOUTUBE_API_KEY environment variable"
+    query = msg.match[1]
+    maxResults = if process.env.HUBOT_YOUTUBE_DETERMINISTIC_RESULTS == 'true' then 1 else 15
+    robot.http("https://www.googleapis.com/youtube/v3/search")
+      .query({
+        order: 'relevance'
+        part: 'snippet'
+        type: 'video'
+        maxResults: maxResults
+        q: query
+        key: process.env.HUBOT_YOUTUBE_API_KEY
+      })
+      .get() (err, res, body) ->
+        videos = JSON.parse(body)
+        videos = videos.items
+
+        unless videos? && videos.length > 0
+          return msg.send "No video results for \"#{query}\""
+
+        video  = msg.random videos
+        msg.send "https://www.youtube.com/watch?v=#{video.id.videoId}"
+        update_playlist "#{video.id.videoId}", msg
