@@ -1,7 +1,7 @@
 {
   "name": "hubot-youtubepl",
   "description": "A hubot script that will add all youtube links to a playlist",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "author": "Brian Hartvigsen <bhartvigsen@opendns.com>",
   "license": "MIT",
   "keywords": "hubot, hubot-scripts",
